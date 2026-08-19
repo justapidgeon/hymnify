@@ -40,7 +40,17 @@
   let searchIndex = [];
   let searchIndexMap = new Map(); // id → index entry, rebuilt with searchIndex
 
+  // Cache for chord info per song — avoids re-scanning lyrics on every render
+  const chordInfoCache = new Map(); // id → { hasAny, hasFull }
+
+  // Cache for the sorted full hymn list — only rebuilt when state.hymns changes
+  let sortedHymnsCache = null;
+
   function buildSearchIndex(hymns) {
+    // Invalidate caches when hymn data changes
+    sortedHymnsCache = null;
+    chordInfoCache.clear();
+
     searchIndex = hymns.map((h) => ({
       id: h.id,
       title_lc: h.title ? h.title.toLowerCase() : '',
@@ -165,14 +175,15 @@
   }
 
   function getFilteredHymns() {
-    let list = state.activeTab === 'liked'
-      ? state.hymns.filter((h) => state.likedIds.includes(h.id))
-      : state.hymns.slice();
-
+    const likedSet = new Set(state.likedIds);
     const q = state.searchQuery.trim().toLowerCase();
+
     if (q) {
-      // Use the pre-built map — no allocation on every keystroke
-      list = list.filter((h) => {
+      // Searching: filter from full list (or liked list), no sort needed
+      const base = state.activeTab === 'liked'
+        ? state.hymns.filter((h) => likedSet.has(h.id))
+        : state.hymns;
+      return base.filter((h) => {
         const idx = searchIndexMap.get(h.id);
         if (!idx) return false;
         return (
@@ -182,24 +193,56 @@
           idx.lyrics_lc.includes(q)
         );
       });
-    } else if (state.activeTab === 'all') {
-      const numbered = list.filter((h) => h.number != null);
-      const unnumbered = list.filter((h) => h.number == null);
-      numbered.sort((a, b) => a.number - b.number);
-      unnumbered.sort((a, b) => a.title.localeCompare(b.title));
-      list = numbered.concat(unnumbered);
-    } else {
-      list.sort((a, b) => a.title.localeCompare(b.title));
     }
 
-    return list;
+    if (state.activeTab === 'liked') {
+      // Liked tab, no search — sort alpha
+      return state.hymns
+        .filter((h) => likedSet.has(h.id))
+        .sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    // All tab, no search — use cached sorted list
+    if (!sortedHymnsCache) {
+      const numbered = state.hymns.filter((h) => h.number != null);
+      const unnumbered = state.hymns.filter((h) => h.number == null);
+      numbered.sort((a, b) => a.number - b.number);
+      unnumbered.sort((a, b) => a.title.localeCompare(b.title));
+      sortedHymnsCache = numbered.concat(unnumbered);
+    }
+    return sortedHymnsCache;
   }
 
-  function renderHymnsGrid() {
+  function buildCardHtml(hymn, likedSet) {
+    const liked = likedSet.has(hymn.id);
+    const flagged = !!state.flaggedSongs[hymn.id];
+    const badge = hymn.number != null ? hymn.number : '♪';
+    const meta = hymn.number != null
+      ? `#${hymn.number} • Key ${hymn.originalKey}`
+      : `Key ${hymn.originalKey}`;
+    return `
+      <article class="hymn-card glass-panel" data-id="${hymn.id}">
+        <div class="hymn-info">
+          <div class="hymn-number-badge">${badge}</div>
+          <div class="hymn-details">
+            <div class="hymn-card-title">${escapeHtml(hymn.title)}${flagged ? ' <span class="flag-badge" title="Flagged for review"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>' : ''}</div>
+            <div class="hymn-card-meta">${escapeHtml(meta)}</div>
+          </div>
+        </div>
+        <div class="like-zone" data-like-id="${hymn.id}" title="Like this song">
+          <button class="like-btn ${liked ? 'liked' : ''}" type="button" aria-label="Like">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+        </div>
+      </article>`;
+  }
+
+  function renderHymnsGrid(appendFrom = 0) {
     state.filteredHymns = getFilteredHymns();
     const total = state.filteredHymns.length;
     const limit = state.searchQuery.trim() ? total : Math.min(state.listOffset, total);
-    const visible = state.filteredHymns.slice(0, limit);
 
     if (total === 0) {
       el.hymnsGrid.innerHTML = `
@@ -213,48 +256,34 @@
     }
 
     const likedSet = new Set(state.likedIds);
-    const cardsHtml = visible.map((hymn) => {
-      const liked = likedSet.has(hymn.id);
-      const flagged = !!state.flaggedSongs[hymn.id];
-      const badge = hymn.number != null ? hymn.number : '♪';
-      const meta = hymn.number != null
-        ? `#${hymn.number} • Key ${hymn.originalKey}`
-        : `Key ${hymn.originalKey}`;
 
-      return `
-        <article class="hymn-card glass-panel" data-id="${hymn.id}">
-          <div class="hymn-info">
-            <div class="hymn-number-badge">${badge}</div>
-            <div class="hymn-details">
-              <div class="hymn-card-title">${escapeHtml(hymn.title)}${flagged ? ' <span class="flag-badge" title="Flagged for review"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>' : ''}</div>
-              <div class="hymn-card-meta">${escapeHtml(meta)}</div>
-            </div>
-          </div>
-          <div class="like-zone" data-like-id="${hymn.id}" title="Like this song">
-            <button class="like-btn ${liked ? 'liked' : ''}" type="button" aria-label="Like">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            </button>
-          </div>
-        </article>`;
-    }).join('');
+    // Remove old footer (load-more btn or results count) before appending
+    const oldFooter = el.hymnsGrid.querySelector('.load-more-btn, .results-count');
+    if (oldFooter) oldFooter.remove();
 
-    let footer = '';
-    if (!state.searchQuery.trim() && limit < total) {
-      footer = `
-        <button id="loadMoreBtn" class="secondary-btn load-more-btn" type="button">
-          Load more (${limit} of ${total.toLocaleString()})
-        </button>`;
-    } else if (total > 0) {
-      footer = `<p class="results-count">${total.toLocaleString()} hymn${total === 1 ? '' : 's'}</p>`;
+    if (appendFrom === 0) {
+      // Full re-render (search change, tab switch, initial load)
+      const cardsHtml = state.filteredHymns.slice(0, limit).map((h) => buildCardHtml(h, likedSet)).join('');
+      el.hymnsGrid.innerHTML = cardsHtml;
+    } else {
+      // Append-only: only render the new slice
+      const newCards = state.filteredHymns.slice(appendFrom, limit).map((h) => buildCardHtml(h, likedSet)).join('');
+      el.hymnsGrid.insertAdjacentHTML('beforeend', newCards);
     }
 
-    el.hymnsGrid.innerHTML = cardsHtml + footer;
+    // Rebuild footer
+    const frag = document.createElement('div');
+    if (!state.searchQuery.trim() && limit < total) {
+      frag.innerHTML = `<button id="loadMoreBtn" class="secondary-btn load-more-btn" type="button">Load more (${limit} of ${total.toLocaleString()})</button>`;
+    } else {
+      frag.innerHTML = `<p class="results-count">${total.toLocaleString()} hymn${total === 1 ? '' : 's'}</p>`;
+    }
+    el.hymnsGrid.appendChild(frag.firstElementChild);
 
     document.getElementById('loadMoreBtn')?.addEventListener('click', () => {
+      const prevLimit = Math.min(state.listOffset, total);
       state.listOffset += PAGE_SIZE;
-      renderHymnsGrid();
+      renderHymnsGrid(prevLimit);
     });
   }
 
@@ -421,6 +450,12 @@
     });
   }
 
+  // Returns true if the song has any chord annotations at all.
+  function songHasAnyChords(lyrics) {
+    if (!lyrics) return false;
+    return /\[[A-G][^\]]*\]/.test(lyrics);
+  }
+
   // Returns true if the song has chord annotations beyond just the first
   // verse + first chorus (i.e. "All Chords" mode would actually show more).
   function songHasFullChords(lyrics) {
@@ -468,6 +503,17 @@
       }
     }
     return false;
+  }
+
+  // Cached version — avoids re-scanning lyrics on every renderReaderContent call
+  function getSongChordInfo(song) {
+    if (chordInfoCache.has(song.id)) return chordInfoCache.get(song.id);
+    const info = {
+      hasAny:  songHasAnyChords(song.lyrics),
+      hasFull: songHasFullChords(song.lyrics)
+    };
+    chordInfoCache.set(song.id, info);
+    return info;
   }
 
   function normalizeSectionLabel(raw) {
@@ -652,20 +698,27 @@
     const lyrics = getActiveLyrics(state.currentSong);
     const originalKey = state.currentSong.originalKey || 'C';
     const displayKey = getNewKey(originalKey, state.transpose);
+    const chordInfo = getSongChordInfo(state.currentSong);
 
     el.keyDisplay.textContent = displayKey;
     el.readerContent.classList.toggle('hide-chords', !state.showChords);
     el.readerContent.style.setProperty('--lyric-size', `${state.fontSize}px`);
 
+    // Grey out Chords button when song has no chords at all
+    if (el.toggleChordsBtn) {
+      el.toggleChordsBtn.disabled = !chordInfo.hasAny;
+      el.toggleChordsBtn.classList.toggle('scope-disabled', !chordInfo.hasAny);
+      el.toggleChordsBtn.title = !chordInfo.hasAny ? 'This song has no chord annotations' : '';
+    }
+
     // Sync chord scope button — grey it out if song has no chords beyond the intro
     if (el.chordScopeBtn) {
       const isIntro = state.chordScope === 'intro';
-      const hasFullChords = songHasFullChords(state.currentSong.lyrics);
       el.chordScopeBtn.textContent = isIntro ? 'Intro Chords' : 'All Chords';
       el.chordScopeBtn.classList.toggle('scope-intro', isIntro);
-      el.chordScopeBtn.disabled = !hasFullChords;
-      el.chordScopeBtn.classList.toggle('scope-disabled', !hasFullChords);
-      el.chordScopeBtn.title = !hasFullChords
+      el.chordScopeBtn.disabled = !chordInfo.hasFull;
+      el.chordScopeBtn.classList.toggle('scope-disabled', !chordInfo.hasFull);
+      el.chordScopeBtn.title = !chordInfo.hasFull
         ? 'This song only has chords for the intro'
         : isIntro
           ? 'Showing chords on first verse & chorus only — click to show all'
@@ -816,8 +869,12 @@
     });
 
     el.searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && state.searchQuery.trim()) {
-        addRecentSearch(state.searchQuery.trim());
+      if (e.key === 'Enter') {
+        clearTimeout(searchDebounce);
+        state.searchQuery = el.searchInput.value;
+        state.listOffset = PAGE_SIZE;
+        renderHymnsGrid();
+        if (state.searchQuery.trim()) addRecentSearch(state.searchQuery.trim());
       }
     });
 
