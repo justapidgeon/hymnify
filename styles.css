@@ -251,6 +251,32 @@ body {
   gap: 10px;
 }
 
+.header-actions-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.envisioned-by {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  text-align: right;
+  white-space: nowrap;
+  font-style: italic;
+  user-select: none;
+  pointer-events: none;
+}
+
 .request-song-btn {
   background: var(--glass-pill);
   border: 1px solid var(--glass-border);
