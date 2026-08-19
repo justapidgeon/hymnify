@@ -469,6 +469,8 @@
     }
     return false;
   }
+
+  function normalizeSectionLabel(raw) {
     const text = raw.trim();
     if (/^chorus/i.test(text)) return 'Chorus';
     if (/^bridge/i.test(text)) return 'Bridge';
