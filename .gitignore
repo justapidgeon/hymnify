@@ -1,2 +1,6 @@
-# Local Vercel folder
+# Netlify (no longer used)
+.netlify
+netlify.toml
+
+# Vercel
 .vercel
