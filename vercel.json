@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/songbase/:path*",
+      "destination": "https://songbase.life/api/v2/:path*"
+    }
+  ]
+}
