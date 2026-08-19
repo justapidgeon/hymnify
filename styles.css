@@ -1,0 +1,1467 @@
+/* remove duplicate — fonts are already loaded via <link> in index.html */
+
+:root {
+  /* Apple Glassmorphic Light Palette */
+  --bg-gradient-light: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  --glass-bg-light: rgba(255, 255, 255, 0.45);
+  --glass-border-light: rgba(255, 255, 255, 0.6);
+  --glass-shadow-light: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+  --text-main-light: #121212;
+  --text-muted-light: #6a6a6a;
+  --card-hover-light: rgba(255, 255, 255, 0.65);
+  --accent-color: #0071e3;
+  --accent-gradient: linear-gradient(135deg, #0071e3 0%, #42a5f5 100%);
+  --chord-color-light: #0071e3;
+  
+  /* Apple Glassmorphic Dark Palette / Spotify Vibe */
+  --bg-gradient-dark: radial-gradient(circle at 50% 0%, #1c1c1e 0%, #000000 100%);
+  --glass-bg-dark: rgba(28, 28, 30, 0.65);
+  --glass-border-dark: rgba(255, 255, 255, 0.12);
+  --glass-shadow-dark: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --text-main-dark: #ffffff;
+  --text-muted-dark: #a7a7a7;
+  --card-hover-dark: rgba(45, 45, 48, 0.7);
+  --chord-color-dark: #1db954; /* Spotify green accent for chords in dark mode */
+
+  /* Spotify Typography */
+  --font-spotify: "Plus Jakarta Sans", "Circular", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+  
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 8px;
+  --transition-speed: 0.25s;
+}
+
+[data-theme="light"] {
+  --bg-gradient: var(--bg-gradient-light);
+  --glass-bg: var(--glass-bg-light);
+  --glass-border: var(--glass-border-light);
+  --glass-shadow: var(--glass-shadow-light);
+  --text-main: var(--text-main-light);
+  --text-muted: var(--text-muted-light);
+  --card-hover: var(--card-hover-light);
+  --chord-color: var(--chord-color-light);
+  --glass-pill: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="dark"] {
+  --bg-gradient: var(--bg-gradient-dark);
+  --glass-bg: var(--glass-bg-dark);
+  --glass-border: var(--glass-border-dark);
+  --glass-shadow: var(--glass-shadow-dark);
+  --text-main: var(--text-main-dark);
+  --text-muted: var(--text-muted-dark);
+  --card-hover: var(--card-hover-dark);
+  --chord-color: var(--chord-color-dark);
+  --glass-pill: rgba(45, 45, 50, 0.75);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  background-color: #000000;
+  min-height: 100%;
+  height: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overflow-y: scroll;
+}
+
+/* Fixed full-viewport background pseudo-element — covers the entire screen
+   at all scroll depths without triggering per-scroll repaints */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-gradient);
+  transition: background 0.5s ease;
+  pointer-events: none;
+}
+
+html::-webkit-scrollbar,
+html::-webkit-scrollbar-track,
+html::-webkit-scrollbar-thumb {
+  display: none;
+  width: 0;
+  background: transparent;
+}
+
+body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-spotify);
+  /* Background is on html element — body is transparent so no double paint */
+  background: transparent;
+  color: var(--text-main);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: 90px;
+  transition: color 0.3s ease;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Background Animated Glow Elements */
+.glow-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  z-index: -1;
+  opacity: 0.4;
+  pointer-events: none;
+  /* Own compositing layer — transform animation won't re-composite the blur */
+  will-change: transform;
+  animation: pulseBlob 14s infinite alternate ease-in-out;
+}
+
+.glow-1 {
+  width: 400px;
+  height: 400px;
+  background: rgba(0, 113, 227, 0.2);
+  top: -100px;
+  left: -100px;
+}
+
+.glow-2 {
+  width: 450px;
+  height: 450px;
+  background: rgba(175, 82, 222, 0.15);
+  bottom: -100px;
+  right: -100px;
+  animation-delay: -7s;
+}
+
+@keyframes pulseBlob {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.12) translate(25px, 35px); }
+}
+
+/* Glass Utility Container — blur only on chrome elements, NOT on list cards */
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-lg);
+}
+
+/* Blur is expensive — restrict it to the few persistent chrome elements */
+.header-bar,
+.search-section,
+.reader-header,
+.control-toolbar,
+.loading-card,
+.modal-card,
+.toast-popup {
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+}
+
+/* Hymn cards use a solid background — no blur on 150 simultaneous elements */
+.hymn-card {
+  background: var(--glass-bg);
+}
+
+[data-theme="dark"] .hymn-card {
+  background: rgba(28, 28, 30, 0.85);
+}
+
+[data-theme="light"] .hymn-card {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.glass-pill {
+  background: var(--glass-pill);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+}
+
+/* Header & Nav */
+.header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  margin: 12px 16px 0 16px;
+  border-radius: 16px;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sync-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+.logo-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1.5px dashed var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.request-song-btn {
+  background: var(--glass-pill);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.request-song-btn:hover {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--glass-border);
+  transform: scale(1.05);
+}
+
+/* Main Container */
+.container {
+  max-width: 860px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+/* Search Section */
+.search-section {
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.search-box-wrapper {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 20px 14px 44px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  outline: none;
+  font-family: inherit;
+  transition: all 0.25s ease;
+}
+
+.search-input:focus {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+}
+
+.search-icon-inside {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+/* Recent Searches Chips */
+.recent-searches-box {
+  margin-top: 14px;
+}
+
+.recent-searches-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.chips-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--glass-pill);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.chip:hover {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+}
+
+.chip-remove {
+  font-size: 14px;
+  opacity: 0.6;
+  line-height: 1;
+}
+
+.chip-remove:hover {
+  opacity: 1;
+}
+
+/* Navigation Tabs */
+.tabs-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.tab-btn.active {
+  background: var(--accent-color);
+  color: white;
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25);
+}
+
+/* Hymn List */
+.hymns-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Contain layout/style so card changes don't trigger full-page recalc */
+  contain: content;
+}
+
+.hymn-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 14px 20px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+.hymn-card:hover {
+  transform: translateY(-2px);
+  background: var(--card-hover);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.hymn-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hymn-number-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(0, 113, 227, 0.1);
+  color: var(--accent-color);
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hymn-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.hymn-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+
+.hymn-card-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Dedicated, generous tap zone for liking without opening card */
+.like-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  margin: -6px 0;
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.like-zone:hover {
+  background: rgba(255, 45, 85, 0.1);
+}
+
+.like-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.like-btn.liked {
+  color: #ff2d55;
+}
+
+.like-btn.liked svg {
+  fill: #ff2d55;
+}
+
+.like-zone:hover .like-btn {
+  transform: scale(1.2);
+}
+
+/* Song Reader Modal / Full View - Spotify Lyrics Experience */
+.reader-view {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: transparent;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fixed background behind reader — same compositor trick as html::before */
+.reader-view::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-gradient);
+  transition: background 0.5s ease;
+  pointer-events: none;
+}
+
+.reader-view.active {
+  display: flex;
+  animation: readerFadeIn 0.2s ease forwards;
+}
+
+@keyframes readerFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.reader-header {
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.back-btn {
+  background: var(--glass-pill);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reader-title-group {
+  text-align: center;
+}
+
+.reader-song-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.reader-song-meta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.reader-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Control Toolbar */
+.control-toolbar {
+  padding: 10px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-pill-group {
+  display: flex;
+  background: var(--glass-pill);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 2px;
+  align-items: center;
+}
+
+.tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tool-btn.active, .tool-btn:active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.key-display {
+  font-weight: 800;
+  min-width: 30px;
+  text-align: center;
+  color: var(--accent-color);
+  font-size: 13px;
+}
+
+/* Song Content Reader Sheet - Spotify Lyrics Aesthetic */
+.reader-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 32px 80px 32px;
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Isolate scroll repaints — changes inside don't trigger layout outside */
+  contain: layout style;
+  /* Promote to own layer so scrolling doesn't repaint the blurred header */
+  will-change: scroll-position;
+}
+
+.reader-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  background: transparent;
+}
+
+/* Chord sheet layout — chords above lyrics, syllable-aligned */
+.section-tag {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  margin-top: 28px;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.12);
+  border: 1px solid rgba(0, 113, 227, 0.2);
+  display: inline-block;
+}
+
+[data-theme="dark"] .section-tag {
+  background: rgba(29, 185, 84, 0.12);
+  border-color: rgba(29, 185, 84, 0.25);
+  color: var(--chord-color);
+}
+
+.chord-line-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 6px;
+  line-height: 1;
+}
+
+.chord-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  vertical-align: bottom;
+  max-width: 100%;
+}
+
+.chord-slot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  min-height: 1.4em;
+  width: 100%;
+  margin-bottom: 1px;
+}
+
+.chord-above {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--chord-color);
+  white-space: nowrap;
+  letter-spacing: -0.3px;
+  user-select: none;
+  padding-right: 1px;
+}
+
+.chord-blank {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lyric-below {
+  font-family: var(--font-spotify);
+  font-weight: 700;
+  font-size: var(--lyric-size, 24px);
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+  color: var(--text-main);
+  white-space: pre;
+}
+
+.lyric-plain-row {
+  margin-bottom: 10px;
+}
+
+.lyric-plain-row .lyric-below {
+  white-space: pre-wrap;
+}
+
+/* When chords are hidden */
+.hide-chords .chord-slot {
+  display: none !important;
+}
+
+.hide-chords .chord-line-row {
+  margin-bottom: 10px;
+}
+
+.hide-chords .chord-cell {
+  display: inline;
+}
+
+.hide-chords .lyric-below {
+  white-space: pre-wrap;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+}
+
+.retry-btn {
+  margin-top: 16px;
+}
+
+.load-more-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+}
+
+.results-count {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 12px 0 4px;
+}
+
+.site-footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 24px 8px 8px;
+}
+
+.site-footer a {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 24px;
+}
+
+.loading-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 32px 28px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent-color);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-message {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.loading-bar-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--accent-gradient);
+  transition: width 0.35s ease;
+}
+
+.loading-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Songbase lyric extras */
+.song-comment-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.lyric-comment {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 8px 0 12px;
+}
+
+.stanza-number {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-color);
+  margin: 20px 0 8px;
+}
+
+.lyric-spacer {
+  height: 10px;
+}
+
+.chorus-line {
+  padding-left: 14px;
+  border-left: 3px solid rgba(29, 185, 84, 0.4);
+  margin-left: 2px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.tune-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+}
+
+.tune-selector-wrap label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.tune-select-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px auto;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Audio Synth Play Pill */
+.pitch-pipe-btn {
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.pitch-pipe-btn:hover {
+  transform: scale(1.03);
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalFadeIn 0.2s ease forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-lg {
+  max-width: 720px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.modal-title {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.modal-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  color: var(--text-main);
+  background: var(--glass-border);
+}
+
+/* Forms */
+.request-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  outline: none;
+  font-family: var(--font-sans);
+  transition: border-color 0.2s ease;
+}
+
+.form-textarea {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.form-input:focus, .form-textarea:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.primary-btn {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.secondary-btn {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--glass-border);
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.secondary-btn:hover {
+  background: var(--glass-border);
+}
+
+/* Admin Pending Cards */
+.pending-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.pending-card {
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pending-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.pending-card-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pending-card-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pending-lyrics-preview {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 10px;
+  border-radius: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+}
+
+.pending-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.approve-btn {
+  background: #34c759;
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reject-btn {
+  background: rgba(255, 59, 48, 0.15);
+  color: #ff3b30;
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Toast */
+.toast-popup {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  z-index: 400;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: toastSlideUp 0.25s ease forwards;
+}
+
+@keyframes toastSlideUp {
+  from { opacity: 0; transform: translate(-50%, 15px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .header-bar {
+    padding: 10px 14px;
+    margin: 8px;
+  }
+  .app-title {
+    font-size: 18px;
+  }
+  .request-song-btn span {
+    display: none;
+  }
+  .request-song-btn {
+    padding: 7px 10px;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .control-toolbar {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .reader-content {
+    padding: 20px 16px 40px 16px;
+  }
+}
+
+
+
+/* ============================================================
+   v3.2 — No-wrap lines, Flag button/modal, Chord Scope toggle
+   ============================================================ */
+
+/* --- No-wrap lyric lines ------------------------------------ */
+/* Each lyric row is wrapped in .lyric-line-wrap so the inner
+   chord-line-row can overflow horizontally without ever
+   breaking chords away from their syllables. */
+
+.lyric-line-wrap {
+  display: block;
+  overflow-x: auto;
+  overflow-y: visible;
+  /* hide scrollbar visually but keep it functional */
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE/Edge */
+  margin-bottom: 6px;
+  /* left-border chorus styling lives on this wrapper now */
+}
+
+.lyric-line-wrap::-webkit-scrollbar {
+  display: none;                  /* Chrome/Safari */
+}
+
+/* Move chorus indent to the wrapper so the border covers
+   both the chord row AND the lyric row below it */
+.lyric-line-wrap.chorus-line {
+  padding-left: 14px;
+  border-left: 3px solid rgba(29, 185, 84, 0.4);
+  margin-left: 2px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* The actual chord+lyric row must never wrap */
+.chord-line-row {
+  display: flex;
+  flex-wrap: nowrap;              /* KEY fix — was "wrap" before */
+  align-items: flex-end;
+  white-space: nowrap;
+  margin-bottom: 0;               /* spacing handled by .lyric-line-wrap */
+  line-height: 1;
+}
+
+/* Plain lyric rows (no chords) also stay on one line.
+   They can wrap only in hide-chords mode where wrapping is fine. */
+.lyric-plain-row {
+  white-space: nowrap;
+  margin-bottom: 0;
+}
+
+/* Chord cells must not shrink below content width */
+.chord-cell {
+  flex-shrink: 0;
+}
+
+/* Restore wrapping when chords are toggled off — text should
+   flow naturally as a paragraph when there are no chord stacks */
+.hide-chords .lyric-line-wrap {
+  overflow-x: visible;
+}
+
+.hide-chords .lyric-plain-row,
+.hide-chords .lyric-below {
+  white-space: pre-wrap;
+}
+
+/* --- Flag Button (reader header) --------------------------- */
+
+.flag-btn {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.flag-btn:hover {
+  color: #ff9f0a;
+  background: rgba(255, 159, 10, 0.1);
+  border-color: rgba(255, 159, 10, 0.35);
+}
+
+.flag-btn.flagged {
+  color: #ff9f0a;
+  background: rgba(255, 159, 10, 0.14);
+  border-color: rgba(255, 159, 10, 0.4);
+}
+
+.flag-btn.flagged svg {
+  fill: rgba(255, 159, 10, 0.3);
+}
+
+/* --- Flag badge on hymn cards ------------------------------ */
+
+.flag-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  vertical-align: middle;
+  color: #ff9f0a;
+  flex-shrink: 0;
+  /* opacity-only pulse — compositor handles this without reflow */
+  will-change: opacity;
+  animation: flagPulse 2.6s ease-in-out infinite;
+}
+
+@keyframes flagPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* --- Flag Modal --------------------------------------------- */
+
+.flag-submit-btn {
+  background: linear-gradient(135deg, #ff9f0a 0%, #ff6b00 100%);
+  box-shadow: 0 4px 12px rgba(255, 159, 10, 0.28);
+}
+
+.flag-submit-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.flag-clear-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-top: -4px;
+}
+
+.flag-clear-hint strong {
+  color: var(--text-main);
+}
+
+/* --- Chord Scope Toggle button ----------------------------- */
+
+.chord-scope-btn {
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--glass-pill);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chord-scope-btn:hover {
+  background: rgba(0, 113, 227, 0.12);
+  border-color: rgba(0, 113, 227, 0.35);
+  color: var(--accent-color);
+}
+
+/* "Intro Chords" active state — teal/green accent to differentiate
+   from the standard blue "Chords" toggle */
+.chord-scope-btn.scope-intro {
+  background: rgba(29, 185, 84, 0.14);
+  border-color: rgba(29, 185, 84, 0.4);
+  color: #1db954;
+  box-shadow: 0 2px 8px rgba(29, 185, 84, 0.18);
+}
+
+[data-theme="light"] .chord-scope-btn.scope-intro {
+  color: #0a7c34;
+  background: rgba(10, 124, 52, 0.1);
+  border-color: rgba(10, 124, 52, 0.3);
+}
+
+/* Greyed out when song has no chords beyond the intro */
+.chord-scope-btn.scope-disabled,
+.chord-scope-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  background: transparent;
+  border-color: var(--glass-border);
+  color: var(--text-muted);
+  box-shadow: none;
+}
