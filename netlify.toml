@@ -1,0 +1,9 @@
+[build]
+  publish = "."
+
+# Proxy Songbase API through our domain so the browser can fetch without CORS issues
+[[redirects]]
+  from = "/api/songbase/*"
+  to = "https://songbase.life/api/v2/:splat"
+  status = 200
+  force = true
