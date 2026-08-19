@@ -1,5 +1,5 @@
 /**
- * Songbase API sync with IndexedDB caching (Option A).
+ * Songbase API sync with IndexedDB caching.
  * Data source: https://songbase.life/api/v2
  */
 (function () {
@@ -92,17 +92,11 @@
 
   function setMeta(db, meta) {
     return new Promise((resolve, reject) => {
-<<<<<<< HEAD
       const tx = db.transaction('meta', 'readwrite');
       tx.objectStore('meta').put({ key: 'sync', ...meta });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
-=======
-      const request = txStore(db, 'meta', 'readwrite').put({ key: 'sync', ...meta });
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
     });
   }
 
@@ -129,10 +123,7 @@
       songs.forEach((song) => store.put(song));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
-<<<<<<< HEAD
       tx.onabort = () => reject(tx.error);
-=======
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
     });
   }
 
@@ -144,10 +135,7 @@
       ids.forEach((id) => store.delete(Number(id)));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
-<<<<<<< HEAD
       tx.onabort = () => reject(tx.error);
-=======
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
     });
   }
 
@@ -158,7 +146,6 @@
       books.forEach((book) => store.put(book));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
-<<<<<<< HEAD
       tx.onabort = () => reject(tx.error);
     });
   }
@@ -180,8 +167,6 @@
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
-=======
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
     });
   }
 
@@ -230,10 +215,7 @@
     hymns: [],
     onProgress: null,
     onUpdate: null,
-<<<<<<< HEAD
     _syncPromise: null,   // in-flight guard — prevents concurrent downloads
-=======
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
 
     async init(options = {}) {
       const language = options.language || DEFAULT_LANGUAGE;
@@ -246,7 +228,6 @@
       if (cachedSongs.length > 0) {
         this.hymns = transformSongs(cachedSongs, cachedBooks);
         this._notifyUpdate('cache');
-<<<<<<< HEAD
         // Background delta — don't stack if one is already running
         if (!this._syncPromise) {
           this._syncPromise = this.sync(language)
@@ -262,13 +243,6 @@
           .finally(() => { this._syncPromise = null; });
       }
       return this._syncPromise;
-=======
-        this.sync(language).catch((err) => console.warn('Background sync failed:', err));
-        return this.hymns;
-      }
-
-      return this.sync(language, { initial: true });
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
     },
 
     async sync(language = DEFAULT_LANGUAGE, options = {}) {
@@ -281,7 +255,6 @@
         const data = await fetchAppData({ language });
         this._reportProgress('Saving songs offline…', 70);
 
-<<<<<<< HEAD
         // Single atomic write — songs + books + meta in one transaction.
         // If the page closes mid-write, nothing is partially committed.
         const metaPayload = {
@@ -295,18 +268,6 @@
           data.books || [],
           metaPayload
         );
-=======
-        await saveSongs(this.db, data.songs || []);
-        if (data.books?.length) {
-          await saveBooks(this.db, data.books);
-        }
-
-        await setMeta(this.db, {
-          updatedAt: Date.now(),
-          language,
-          songCount: data.songs?.length || 0
-        });
->>>>>>> 24292525ae4ce30d9532a7eb41ad1d0b1dbae9bc
 
         this.hymns = transformSongs(data.songs || [], data.books || []);
         this._reportProgress('Ready!', 100);
