@@ -92,9 +92,11 @@
 
   function setMeta(db, meta) {
     return new Promise((resolve, reject) => {
-      const request = txStore(db, 'meta', 'readwrite').put({ key: 'sync', ...meta });
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      const tx = db.transaction('meta', 'readwrite');
+      tx.objectStore('meta').put({ key: 'sync', ...meta });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
     });
   }
 
@@ -121,6 +123,7 @@
       songs.forEach((song) => store.put(song));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
     });
   }
 
@@ -132,6 +135,7 @@
       ids.forEach((id) => store.delete(Number(id)));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
     });
   }
 
@@ -142,6 +146,27 @@
       books.forEach((book) => store.put(book));
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+
+  // Atomically write songs + books + meta timestamp in one transaction so a
+  // mid-write page close can never leave the DB in a state where songs exist
+  // but meta is missing (which caused the full re-download loop).
+  function saveFullSync(db, songs, books, metaPayload) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['songs', 'books', 'meta'], 'readwrite');
+      const songStore = tx.objectStore('songs');
+      const bookStore = tx.objectStore('books');
+      const metaStore = tx.objectStore('meta');
+
+      songs.forEach((song) => songStore.put(song));
+      books.forEach((book) => bookStore.put(book));
+      metaStore.put({ key: 'sync', ...metaPayload });
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
     });
   }
 
@@ -190,6 +215,7 @@
     hymns: [],
     onProgress: null,
     onUpdate: null,
+    _syncPromise: null,   // in-flight guard — prevents concurrent downloads
 
     async init(options = {}) {
       const language = options.language || DEFAULT_LANGUAGE;
@@ -202,11 +228,21 @@
       if (cachedSongs.length > 0) {
         this.hymns = transformSongs(cachedSongs, cachedBooks);
         this._notifyUpdate('cache');
-        this.sync(language).catch((err) => console.warn('Background sync failed:', err));
+        // Background delta — don't stack if one is already running
+        if (!this._syncPromise) {
+          this._syncPromise = this.sync(language)
+            .catch((err) => console.warn('Background sync failed:', err))
+            .finally(() => { this._syncPromise = null; });
+        }
         return this.hymns;
       }
 
-      return this.sync(language, { initial: true });
+      // No cache — full download. Guard against being called twice.
+      if (!this._syncPromise) {
+        this._syncPromise = this.sync(language, { initial: true })
+          .finally(() => { this._syncPromise = null; });
+      }
+      return this._syncPromise;
     },
 
     async sync(language = DEFAULT_LANGUAGE, options = {}) {
@@ -219,16 +255,19 @@
         const data = await fetchAppData({ language });
         this._reportProgress('Saving songs offline…', 70);
 
-        await saveSongs(this.db, data.songs || []);
-        if (data.books?.length) {
-          await saveBooks(this.db, data.books);
-        }
-
-        await setMeta(this.db, {
+        // Single atomic write — songs + books + meta in one transaction.
+        // If the page closes mid-write, nothing is partially committed.
+        const metaPayload = {
           updatedAt: Date.now(),
           language,
           songCount: data.songs?.length || 0
-        });
+        };
+        await saveFullSync(
+          this.db,
+          data.songs || [],
+          data.books || [],
+          metaPayload
+        );
 
         this.hymns = transformSongs(data.songs || [], data.books || []);
         this._reportProgress('Ready!', 100);
