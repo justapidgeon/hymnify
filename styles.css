@@ -556,6 +556,15 @@ body {
   transform: scale(1.2);
 }
 
+#readerLikeBtn {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#readerLikeBtn:hover {
+  transform: scale(1.15);
+}
+
 /* Song Reader Modal / Full View - Spotify Lyrics Experience */
 .reader-view {
   position: fixed;
@@ -840,6 +849,23 @@ body {
   font-weight: 600;
   color: var(--text-muted);
   padding: 12px 0 4px;
+}
+
+.recent-section-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 4px 8px;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 4px;
+}
+
+.recent-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 12px 0 8px;
 }
 
 .site-footer {

@@ -68,6 +68,7 @@
     activeTab: 'all',
     likedIds: loadJson('hymnify_liked', []),
     recentSearches: loadJson('hymnify_recent_searches', []),
+    recentSearchHymnIds: loadJson('hymnify_recent_search_hymns', []),
     flaggedSongs: loadJson('hymnify_flagged', {}), // { songId: { note, flaggedAt } }
     currentSong: null,
     selectedTune: 0,
@@ -261,10 +262,28 @@
     const oldFooter = el.hymnsGrid.querySelector('.load-more-btn, .results-count');
     if (oldFooter) oldFooter.remove();
 
+    const showRecent = appendFrom === 0 && !state.searchQuery.trim() && state.activeTab === 'all' && state.recentSearchHymnIds.length > 0;
+
     if (appendFrom === 0) {
+      let html = '';
+
+      // Recent searches section
+      if (showRecent) {
+        const recentHymns = state.recentSearchHymnIds
+          .map((id) => state.hymns.find((h) => h.id === id))
+          .filter(Boolean);
+        if (recentHymns.length > 0) {
+          html += `<div class="recent-section-header">Recent</div>`;
+          html += recentHymns.map((h) => buildCardHtml(h, likedSet)).join('');
+          html += `<div class="recent-divider"></div>`;
+        }
+      }
+
       // Full re-render (search change, tab switch, initial load)
-      const cardsHtml = state.filteredHymns.slice(0, limit).map((h) => buildCardHtml(h, likedSet)).join('');
-      el.hymnsGrid.innerHTML = cardsHtml;
+      const recentIdSet = showRecent ? new Set(state.recentSearchHymnIds) : new Set();
+      const mainHymns = state.filteredHymns.filter((h) => !recentIdSet.has(h.id));
+      html += mainHymns.slice(0, limit).map((h) => buildCardHtml(h, likedSet)).join('');
+      el.hymnsGrid.innerHTML = html;
     } else {
       // Append-only: only render the new slice
       const newCards = state.filteredHymns.slice(appendFrom, limit).map((h) => buildCardHtml(h, likedSet)).join('');
@@ -273,17 +292,20 @@
 
     // Rebuild footer
     const frag = document.createElement('div');
-    if (!state.searchQuery.trim() && limit < total) {
-      frag.innerHTML = `<button id="loadMoreBtn" class="secondary-btn load-more-btn" type="button">Load more (${limit} of ${total.toLocaleString()})</button>`;
+    const recentCount = showRecent ? state.recentSearchHymnIds.filter((id) => state.hymns.some((h) => h.id === id)).length : 0;
+    const mainTotal = total - recentCount;
+    const mainShown = Math.min(limit, mainTotal);
+    if (!state.searchQuery.trim() && mainShown < mainTotal) {
+      frag.innerHTML = `<button id="loadMoreBtn" class="secondary-btn load-more-btn" type="button">Load more (${mainShown} of ${mainTotal.toLocaleString()})</button>`;
     } else {
-      frag.innerHTML = `<p class="results-count">${total.toLocaleString()} hymn${total === 1 ? '' : 's'}</p>`;
+      frag.innerHTML = `<p class="results-count">${mainTotal.toLocaleString()} hymn${mainTotal === 1 ? '' : 's'}</p>`;
     }
     el.hymnsGrid.appendChild(frag.firstElementChild);
 
     document.getElementById('loadMoreBtn')?.addEventListener('click', () => {
-      const prevLimit = Math.min(state.listOffset, total);
+      const prevLimit = Math.min(state.listOffset, total) - recentCount;
       state.listOffset += PAGE_SIZE;
-      renderHymnsGrid(prevLimit);
+      renderHymnsGrid(Math.max(0, prevLimit));
     });
   }
 
@@ -311,6 +333,12 @@
     state.recentSearches = [cleaned, ...state.recentSearches.filter((t) => t !== cleaned)].slice(0, 8);
     saveJson('hymnify_recent_searches', state.recentSearches);
     renderRecentSearches();
+  }
+
+  function trackRecentSearchHymn(id) {
+    if (!id) return;
+    state.recentSearchHymnIds = [id, ...state.recentSearchHymnIds.filter((x) => x !== id)].slice(0, 12);
+    saveJson('hymnify_recent_search_hymns', state.recentSearchHymnIds);
   }
 
   function toggleLike(id) {
@@ -758,6 +786,10 @@
     state.currentSong = song;
     state.selectedTune = 0;
     state.transpose = 0;
+
+    if (state.searchQuery.trim()) {
+      trackRecentSearchHymn(song.id);
+    }
 
     el.readerSongTitle.textContent = song.title;
     const metaParts = [];
